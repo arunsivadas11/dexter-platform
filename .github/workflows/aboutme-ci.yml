@@ -8,7 +8,7 @@ on:
 
   push:
     branches:
-      - main
+      - prod
     paths:
       - 'aboutme/**'
       - '.github/workflows/aboutme-ci.yml'
