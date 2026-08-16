@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
+import dexterImage from "../public/Dexter-Platform.png";
 
 const Arrow = () => <span aria-hidden="true">↗</span>;
 
@@ -91,7 +92,7 @@ function App() {
 
           <div className="hero-art" aria-hidden="true">
             <img
-              src="/Dexter-Platform.png"
+              src={dexterImage}
               alt=""
               className="hero-image"
             />
