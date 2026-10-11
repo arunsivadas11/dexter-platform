@@ -34,14 +34,15 @@ function App() {
             <p className="eyebrow">Hi, I'm Arun 👋</p>
 
             <h1>
-              I build. I learn.
+              I solve. I build.
               <br />
-              <em>I share.</em>
+              <em>I keep learning.</em>
             </h1>
 
             <p className="intro">
-              I design and build reliable technology solutions across backend
-              systems, cloud platforms and enterprise integrations.
+              I am a Java developer turned Solution Architect, designing
+              reliable backend systems and cloud solutions that are built to
+              scale.
             </p>
 
             <div className="links">
@@ -106,15 +107,15 @@ function App() {
             <div className="accent-line" />
 
             <p className="about-intro">
-              I am a Solutions Architect with over 12 years of experience in
-              software engineering, specializing in backend systems, cloud
-              technologies, enterprise integrations and solution design.
+              My journey began with Java development and grew into a broader
+              role shaping how applications, platforms and teams work
+              together.
             </p>
 
             <p className="about-intro">
-              I work with architects, development teams and business
-              stakeholders to define scalable, resilient and maintainable
-              solutions.
+              Today, I work across architecture, engineering and cloud
+              technologies to turn complex requirements into scalable,
+              resilient and maintainable solutions.
             </p>
 
             <a href="#contact" className="btn-outline-sm">👤 More About Me</a>
@@ -123,10 +124,10 @@ function App() {
           <div className="about-right">
             <div className="trait-card">
               <div className="trait-icon blue-icon">💡</div>
-              <h3>Solution Designer</h3>
+              <h3>Solution Architect</h3>
               <p>
-                I design comprehensive solutions for complex engineering
-                challenges and scalable systems.
+                I translate complex business and engineering challenges into
+                clear, scalable technical solutions.
               </p>
             </div>
 
@@ -134,8 +135,8 @@ function App() {
               <div className="trait-icon green-icon">&lt;/&gt;</div>
               <h3>Backend Engineer</h3>
               <p>
-                I build robust, maintainable backend systems with focus on
-                performance and reliability.
+                I build dependable Java and Spring Boot services with a focus
+                on performance, clarity and reliability.
               </p>
             </div>
 
@@ -143,8 +144,8 @@ function App() {
               <div className="trait-icon purple-icon">📚</div>
               <h3>Lifelong Learner</h3>
               <p>
-                Always learning, exploring, and staying curious about emerging
-                technologies and practices.
+                I stay curious, continuously exploring better tools, patterns
+                and ways to solve meaningful problems.
               </p>
             </div>
 
@@ -152,8 +153,8 @@ function App() {
               <div className="trait-icon orange-icon">☁️</div>
               <h3>Cloud Architect</h3>
               <p>
-                I architect cloud solutions using modern technologies and
-                enterprise integration patterns.
+                I design cloud-ready platforms and integration patterns that
+                support secure, resilient and evolving systems.
               </p>
             </div>
           </div>
@@ -175,8 +176,8 @@ function App() {
               <div>
                 <h3>Build</h3>
                 <p>
-                  I build modern web applications with focus on performance,
-                  usability, and scalability.
+                  I build robust Java services and modern applications with
+                  performance, maintainability and scale in mind.
                 </p>
                 <a href="#contact" className="card-link">View Projects <Arrow /></a>
               </div>
@@ -192,8 +193,8 @@ function App() {
               <div>
                 <h3>Learn</h3>
                 <p>
-                  I constantly explore new tools, frameworks, and best
-                  practices to level up.
+                  I explore cloud platforms, frameworks and engineering
+                  practices that make technology more effective.
                 </p>
                 <a href="#contact" className="card-link green-link">Read My Blog <Arrow /></a>
               </div>
@@ -212,8 +213,8 @@ function App() {
               <div>
                 <h3>Share</h3>
                 <p>
-                  I write about my learnings and share insights to help others
-                  on their journey.
+                  I share practical lessons from building systems, learning
+                  cloud technologies and growing as an architect.
                 </p>
                 <a href="#contact" className="card-link orange-link">Explore Articles <Arrow /></a>
               </div>
@@ -229,14 +230,14 @@ function App() {
           <div className="experience-list">
             <div className="exp-item">
               <h3>Renault Group</h3>
-              <p className="role">Solutions Architect · Supply Chain IT</p>
-              <p className="prev">Technical Lead · Engineering IT</p>
+              <p className="role">Solutions Architect · Cloud &amp; Enterprise IT</p>
+              <p className="prev">Technical Lead · Backend Engineering</p>
             </div>
 
             <div className="exp-item">
               <h3>Wipro Technologies</h3>
-              <p className="role">Developer · Senior Developer</p>
-              <p className="prev">Corporate Banking · Standard Bank of South Africa</p>
+              <p className="role">Java Developer · Senior Developer</p>
+              <p className="prev">Backend Engineering · Enterprise Applications</p>
             </div>
           </div>
 
@@ -247,12 +248,13 @@ function App() {
             {[
               "Java",
               "Spring Boot",
+              "Cloud Architecture",
               "GCP",
               "Hibernate",
               "APIs",
               "Enterprise Integration",
               "Solution Design",
-              "Performance",
+              "Scalable Systems",
             ].map((x) => (
               <span key={x}>{x}</span>
             ))}
@@ -269,8 +271,8 @@ function App() {
           </h2>
 
           <p>
-            Open to conversations around architecture, engineering and
-            technology.
+            Open to conversations about Java, cloud architecture and building
+            better technology solutions.
           </p>
 
           <div className="contact-links">
