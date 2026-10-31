@@ -1,9 +1,12 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:dexter_platform/services/api_client.dart';
+import 'package:dexter_platform/services/statement_upload_response.dart';
 
 import 'firebase_options.dart';
 import 'auth/auth_gate.dart';
@@ -620,12 +623,12 @@ class _StatementCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Choose a CSV statement to inspect its contents before importing.',
+          'Choose a CSV statement to validate and upload it securely.',
           style: TextStyle(color: muted, fontSize: 12, height: 1.5),
         ),
         const SizedBox(height: 16),
         const Text(
-          'CSV files only · Maximum 5 MB',
+          'CSV files only · Maximum 10 MB',
           style: TextStyle(color: muted, fontSize: 10),
         ),
         const SizedBox(height: 12),
@@ -642,7 +645,7 @@ class _StatementCard extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         const Text(
-          'Local preview only. No file is uploaded or saved in this demo.',
+          'Review your statement before securely uploading it.',
           style: TextStyle(color: muted, fontSize: 10),
         ),
       ],
@@ -766,16 +769,20 @@ class _CsvPreviewDialog extends StatefulWidget {
 
 class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
   String? fileName;
-  List<List<dynamic>> rows = [];
+  Uint8List? fileBytes;
   String? error;
   bool loading = false;
+  bool uploading = false;
+  StatementUploadResponse? uploadResult;
 
   Future<void> pickCsv() async {
+    if (loading || uploading) return;
     setState(() {
       loading = true;
       error = null;
-      rows = [];
       fileName = null;
+      fileBytes = null;
+      uploadResult = null;
     });
     try {
       final result = await FilePicker.pickFiles(
@@ -783,25 +790,27 @@ class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
         allowedExtensions: ['csv'],
       );
       if (result.isEmpty) {
-        setState(() => loading = false);
+        if (mounted) setState(() => loading = false);
         return;
       }
       final file = result.single;
       final bytes = await file.readAsBytes();
-      if (bytes.length > 5 * 1024 * 1024) {
-        throw const FormatException('File must be smaller than 5 MB.');
+      if (bytes.length > 10 * 1024 * 1024) {
+        throw const FormatException('The file exceeds the 10 MB upload limit.');
       }
       final content = utf8.decode(bytes, allowMalformed: true);
       final parsed = const CsvDecoder().convert(content);
-      if (parsed.length < 2) {
-        throw const FormatException('No transaction rows were found.');
+      if (parsed.isEmpty) {
+        throw const FormatException('The CSV file does not contain any data.');
       }
+      if (!mounted) return;
       setState(() {
         fileName = file.name;
-        rows = parsed.take(6).toList();
+        fileBytes = bytes;
         loading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         error = e.toString().replaceFirst('FormatException: ', '');
         loading = false;
@@ -809,9 +818,48 @@ class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
     }
   }
 
+  Future<void> uploadCsv() async {
+    final selectedFileName = fileName;
+    final selectedBytes = fileBytes;
+    if (uploading ||
+        uploadResult != null ||
+        selectedFileName == null ||
+        selectedBytes == null) {
+      return;
+    }
+
+    setState(() {
+      uploading = true;
+      error = null;
+    });
+    try {
+      final result = await ApiClient().uploadStatement(
+        fileName: selectedFileName,
+        bytes: selectedBytes,
+      );
+      if (!mounted) return;
+      setState(() {
+        uploadResult = result;
+        uploading = false;
+      });
+    } on StatementUploadException catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        error = exception.message;
+        uploading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        error = 'The statement could not be uploaded. Please try again.';
+        uploading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Preview bank statement'),
+    title: const Text('Upload bank statement'),
     content: SizedBox(
       width: 620,
       child: SingleChildScrollView(
@@ -820,16 +868,25 @@ class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Select a CSV file. It is read locally for preview only; this demo does not send it to a server or save it.',
+              'Select a CSV file to validate it, then upload it securely for processing.',
               style: TextStyle(fontSize: 12, color: muted, height: 1.5),
             ),
             const SizedBox(height: 14),
             OutlinedButton.icon(
-              onPressed: loading ? null : pickCsv,
+              onPressed: loading || uploading ? null : pickCsv,
               icon: const Icon(Icons.upload_file),
               label: const Text('Select CSV file'),
             ),
             if (loading) const LinearProgressIndicator(),
+            if (uploading) ...[
+              const SizedBox(height: 12),
+              const LinearProgressIndicator(),
+              const SizedBox(height: 6),
+              const Text(
+                'Uploading statement…',
+                style: TextStyle(fontSize: 12, color: muted),
+              ),
+            ],
             if (error != null)
               Padding(
                 padding: const EdgeInsets.only(top: 10),
@@ -847,40 +904,62 @@ class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'First five rows',
-                style: TextStyle(color: muted, fontSize: 11),
-              ),
-              const SizedBox(height: 6),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columns: [
-                    for (final heading in rows.first)
-                      DataColumn(
-                        label: Text(
-                          heading.toString(),
-                          style: const TextStyle(fontSize: 10),
-                        ),
-                      ),
-                  ],
-                  rows: [
-                    for (final row in rows.skip(1))
-                      DataRow(
-                        cells: [
-                          for (var i = 0; i < rows.first.length; i++)
-                            DataCell(
-                              Text(
-                                i < row.length ? row[i].toString() : '',
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            ),
-                        ],
-                      ),
+              if (fileName != null && uploadResult == null && !uploading) ...[
+                const SizedBox(height: 12),
+                const Row(
+                  children: [
+                    Icon(Icons.check_circle_outline, color: blue, size: 17),
+                    SizedBox(width: 7),
+                    Text('Ready to upload', style: TextStyle(fontSize: 12)),
                   ],
                 ),
-              ),
+              ],
+              if (uploadResult case final result?) ...[
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF7EF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF16803C),
+                            size: 18,
+                          ),
+                          SizedBox(width: 7),
+                          Text(
+                            'Statement uploaded successfully',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Upload ID: ${result.uploadId}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      Text(
+                        'CSV records detected: ${result.recordCount}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      Text(
+                        'Status: ${result.status}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ],
         ),
@@ -888,9 +967,26 @@ class _CsvPreviewDialogState extends State<_CsvPreviewDialog> {
     ),
     actions: [
       TextButton(
-        onPressed: () => Navigator.pop(context),
+        onPressed: uploading ? null : () => Navigator.pop(context),
         child: const Text('Close'),
       ),
+      if (fileBytes != null && uploadResult == null)
+        FilledButton.icon(
+          onPressed: uploading ? null : uploadCsv,
+          icon: uploading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.cloud_upload_outlined, size: 17),
+          label: Text(uploading ? 'Uploading…' : 'Upload Statement'),
+        ),
+      if (uploadResult != null)
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Done'),
+        ),
     ],
   );
 }

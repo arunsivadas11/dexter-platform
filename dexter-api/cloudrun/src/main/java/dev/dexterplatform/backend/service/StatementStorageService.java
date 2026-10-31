@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.UUID;
 
@@ -30,11 +33,15 @@ public class StatementStorageService {
     ) throws IOException {
 
         String uploadId = UUID.randomUUID().toString();
+        String uploadDate = LocalDate.now(ZoneOffset.UTC)
+                .format(DateTimeFormatter.ofPattern("ddMMyyyy"));
 
         String objectName = firebaseUid
                 + "/"
                 + uploadId
-                + "/original.csv";
+                + "/Statement_"
+                + uploadDate
+                + ".csv";
 
         BlobInfo blobInfo = BlobInfo.newBuilder(
                         BlobId.of(preprocessingBucket, objectName)
