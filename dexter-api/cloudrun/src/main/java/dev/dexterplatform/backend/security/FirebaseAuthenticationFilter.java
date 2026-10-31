@@ -8,6 +8,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,8 +21,10 @@ import java.io.IOException;
 import java.util.Collections;
 
 @Component
-public class FirebaseAuthenticationFilter
-        extends OncePerRequestFilter {
+public class FirebaseAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger log =
+            LoggerFactory.getLogger(FirebaseAuthenticationFilter.class);
 
     private final FirebaseAuth firebaseAuth;
 
@@ -35,31 +39,58 @@ public class FirebaseAuthenticationFilter
             FilterChain filterChain
     ) throws ServletException, IOException {
 
+        String requestPath = request.getRequestURI();
+
         String authorization =
                 request.getHeader(HttpHeaders.AUTHORIZATION);
 
         if (authorization == null ||
                 !authorization.startsWith("Bearer ")) {
+
+            if (requestPath.startsWith("/api/")) {
+                log.warn(
+                        "Authentication header missing or invalid for {}",
+                        requestPath
+                );
+            }
+
             filterChain.doFilter(request, response);
             return;
         }
 
         String idToken = authorization.substring(7).trim();
 
+        if (idToken.isEmpty()) {
+            log.warn("Empty Bearer token received for {}", requestPath);
+            SecurityContextHolder.clearContext();
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Empty authentication token"
+            );
+            return;
+        }
+
         try {
-            if (idToken.isEmpty()) {
-                throw new IllegalArgumentException("Empty bearer token");
-            }
+            log.debug("Verifying Firebase ID token for {}", requestPath);
 
             FirebaseToken decodedToken =
                     firebaseAuth.verifyIdToken(idToken, true);
 
-            // Require a verified email before granting API access.
+            log.debug(
+                    "Firebase token verification successful for {}",
+                    requestPath
+            );
+
             boolean emailVerified = Boolean.TRUE.equals(
                     decodedToken.getClaims().get("email_verified")
             );
 
             if (!emailVerified) {
+                log.warn(
+                        "Firebase authentication rejected for {}: email not verified",
+                        requestPath
+                );
+
                 SecurityContextHolder.clearContext();
                 response.sendError(
                         HttpServletResponse.SC_FORBIDDEN,
@@ -83,8 +114,22 @@ public class FirebaseAuthenticationFilter
             SecurityContextHolder.getContext()
                     .setAuthentication(authentication);
 
+            log.info(
+                    "Firebase authentication successful for {}",
+                    requestPath
+            );
+
         } catch (Exception exception) {
+
+            log.error(
+                    "Firebase token verification failed for {}. Exception type: {}",
+                    requestPath,
+                    exception.getClass().getName(),
+                    exception
+            );
+
             SecurityContextHolder.clearContext();
+
             response.sendError(
                     HttpServletResponse.SC_UNAUTHORIZED,
                     "Invalid authentication token"
