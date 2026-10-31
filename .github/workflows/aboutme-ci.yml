@@ -1,54 +1,164 @@
-name: About Me - CI/CD
+name: Dexter Platform - CI/CD
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'aboutme/**'
-      - 'firebase.json'
-      - '.firebaserc'
-      - '.github/workflows/aboutme-ci.yml'
+      - "dexter-api/**"
+      - "dexter-app/**"
+      - "aboutme/**"
+      - "firebase.json"
+      - ".firebaserc"
+      - ".github/workflows/aboutme-ci.yml"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dexter-platform-production
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT_ID: dexter-platform
+  GCP_REGION: asia-south1
+  ARTIFACT_REPOSITORY: dexter-api
+  CLOUD_RUN_SERVICE: dexter-backend
+  RUNTIME_SERVICE_ACCOUNT: dexter-upload-api@dexter-platform.iam.gserviceaccount.com
+  IMAGE_NAME: dexter-backend
 
 jobs:
-  build-and-deploy:
+  # --------------------------------------------------
+  # JOB 1: Build and deploy Spring Boot backend
+  # --------------------------------------------------
+
+  deploy-backend:
+    name: Build and deploy backend
     runs-on: ubuntu-latest
 
     permissions:
       contents: read
       id-token: write
 
-    defaults:
-      run:
-        working-directory: aboutme
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/928545923418/locations/global/workloadIdentityPools/github-actions/providers/github"
+          service_account: "github-aboutme-deployer@dexter-platform.iam.gserviceaccount.com"
+
+      - name: Set up Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker authentication
+        run: |
+          gcloud auth configure-docker asia-south1-docker.pkg.dev --quiet
+
+      - name: Build and push backend Docker image
+        working-directory: dexter-api/cloudrun
+        run: |
+          IMAGE_URI="asia-south1-docker.pkg.dev/${GCP_PROJECT_ID}/${ARTIFACT_REPOSITORY}/${IMAGE_NAME}:${GITHUB_SHA}"
+
+          docker build \
+            --tag "${IMAGE_URI}" \
+            .
+
+          docker push "${IMAGE_URI}"
+
+          echo "IMAGE_URI=${IMAGE_URI}" >> "${GITHUB_ENV}"
+
+      - name: Deploy backend to Cloud Run
+        run: |
+          gcloud run deploy "${CLOUD_RUN_SERVICE}" \
+            --image "${IMAGE_URI}" \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --platform managed \
+            --quiet
+
+      - name: Display deployed Cloud Run URL
+        run: |
+          gcloud run services describe "${CLOUD_RUN_SERVICE}" \
+            --project "${GCP_PROJECT_ID}" \
+            --region "${GCP_REGION}" \
+            --format="value(status.url)"
+
+  # --------------------------------------------------
+  # JOB 2: Build Flutter + About Me and deploy Hosting
+  # --------------------------------------------------
+
+  deploy-frontend:
+    name: Build and deploy frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
 
-      - name: Setup Node.js
+      # About Me - React + Vite
+      - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: aboutme/package-lock.json
 
-      - name: Install dependencies
+      - name: Install About Me dependencies
+        working-directory: aboutme
         run: npm ci
 
       - name: Build About Me
+        working-directory: aboutme
         run: npm run build
 
+      # Flutter application
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install Flutter dependencies
+        working-directory: dexter-app
+        run: flutter pub get
+
+      - name: Build Flutter Web
+        working-directory: dexter-app
+        run: |
+          flutter build web \
+            --release \
+            --dart-define=API_BASE_URL=https://dexterapp.dev
+
+      # Combine both applications
+      - name: Combine About Me with Flutter Web
+        run: |
+          mkdir -p dexter-app/build/web/aboutme
+
+          cp -R aboutme/dist/. dexter-app/build/web/aboutme/
+
+      # Google Cloud authentication
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: 'projects/928545923418/locations/global/workloadIdentityPools/github-actions/providers/github'
-          service_account: 'github-aboutme-deployer@dexter-platform.iam.gserviceaccount.com'
+          workload_identity_provider: "projects/928545923418/locations/global/workloadIdentityPools/github-actions/providers/github"
+          service_account: "github-aboutme-deployer@dexter-platform.iam.gserviceaccount.com"
 
-      - name: Setup Firebase CLI
+      - name: Set up Firebase CLI
         run: npm install -g firebase-tools
-        working-directory: .
 
-      - name: Deploy to Firebase Hosting
-        run: firebase deploy --only hosting
-        working-directory: .
+      - name: Deploy Firebase Hosting
+        run: |
+          firebase deploy \
+            --only hosting \
+            --project dexter-platform \
+            --non-interactive

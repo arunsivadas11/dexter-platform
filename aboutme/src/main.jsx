@@ -161,7 +161,7 @@ function App() {
         </section>
 
         {/* ══════════ WHAT I DO ══════════ */}
-        <section id="experience" className="what-section">
+        <section id="what-i-do" className="what-section">
           <h2>What I Do</h2>
           <div className="accent-line" />
 
@@ -223,8 +223,8 @@ function App() {
         </section>
 
         {/* ══════════ EXPERIENCE + SKILLS ══════════ */}
-        <section id="skills" className="skills-section">
-          <h2>Experience</h2>
+        <section className="skills-section">
+          <h2 id="experience">Experience</h2>
           <div className="accent-line" />
 
           <div className="experience-list">
@@ -241,7 +241,7 @@ function App() {
             </div>
           </div>
 
-          <h2 style={{ marginTop: "60px" }}>Focus Areas</h2>
+          <h2 id="skills" style={{ marginTop: "60px" }}>Focus Areas</h2>
           <div className="accent-line" />
 
           <div className="skills">

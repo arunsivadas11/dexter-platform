@@ -62,8 +62,42 @@ node_modules/
 # Yarn Integrity file
 .yarn-integrity
 
-# dotenv environment variables file
-.env
-
 # dataconnect generated files
 .dataconnect
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Service account credentials and private keys
+*service-account*.json
+*adminsdk*.json
+*.pem
+*.p12
+*.key
+
+# Android signing credentials
+key.properties
+*.jks
+*.keystore
+
+# Flutter generated files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+
+# Local IDE files
+.idea/
+.vscode/
+
+# Service account credentials and private keys
+*service-account*.json
+*serviceAccount*.json
+*service_account*.json
+*adminsdk*.json
+*.pem
+*.p12
+*.key
+*.p8

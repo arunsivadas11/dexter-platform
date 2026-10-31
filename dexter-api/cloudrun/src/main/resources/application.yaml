@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: dexter-backend
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+dexter:
+  gcp:
+    project-id: ${GCP_PROJECT_ID:dexter-platform}
+    preprocessing-bucket: ${PREPROCESSING_BUCKET:dexter-app-statements-preprocessing}
+    postprocessing-bucket: ${POSTPROCESSING_BUCKET:dexter-app-statements-postprocessing}
+  firebase:
+    project-id: ${FIREBASE_PROJECT_ID:dexter-platform}
+  security:
+    allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:http://localhost:*,http://127.0.0.1:*}
